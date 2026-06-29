@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: #c8bda3; border-radius: 6px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  textarea.jp-comment { font-family: 'Spectral', Georgia, serif; }
+  textarea.jp-comment::placeholder { color: #b3a98f; font-style: italic; }
+  input.jp-name { font-family: 'Spectral', Georgia, serif; }
+  input.jp-name::placeholder { color: #c2b696; font-style: italic; font-weight: 400; }
+  .jp-strip { transition: box-shadow .15s ease, border-color .15s ease; min-height: 156px; }
+  .jp-strip[data-dragging="1"] { opacity: .35; }
+  .jp-grip:hover { background: #efe7d4 !important; }
+  .jp-name-drag { cursor: grab; }
+  .jp-chip { cursor: grab; }
+  .jp-chip:hover { filter: brightness(.97); }
+  .jp-lane-body { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 9px; align-content: start; }
+  .jp-overview { column-count: 3; column-gap: 30px; }
+  .jp-ovblock { break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid; }
+  @media (max-width: 640px) { .jp-lane-body { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 980px) { .jp-overview { column-count: 2; } }
+  @media (max-width: 440px) { .jp-lane-body { grid-template-columns: 1fr; } .jp-overview { column-count: 1; } }
+  @media print {
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .jp-noprint { display: none !important; }
+    .jp-board, .jp-ovwrap { padding: 0 !important; }
+    .jp-lane { break-inside: avoid; box-shadow: none !important; }
+    .jp-strip { break-inside: avoid; }
+    .jp-overview { column-count: 3; }
+    textarea.jp-comment { border: none !important; }
+  }
+</style>
+</helmet>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" rx="14" fill="#2c4a3b"/>
+    <text x="50" y="44" font-family="Georgia, 'Times New Roman', serif" font-size="20" font-weight="700" fill="#f4efe1" text-anchor="middle">JP</text>
+    <text x="50" y="68" font-family="monospace" font-size="9" letter-spacing="1" fill="#e0c9a0" text-anchor="middle">2026</text>
+  </svg>
+</template>
+<div style="min-height:100vh;background:#ece5d4;background-image:radial-gradient(#e2dac6 0.5px,transparent 0.5px);background-size:7px 7px;font-family:'Spectral',Georgia,serif;color:#221f18;padding-bottom:80px;">
+
+  <header style="background:{{ accent }};color:#f4efe1;padding:24px clamp(18px,4vw,46px) 20px;">
+    <div style="max-width:1500px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;opacity:.7;margin-bottom:7px;">Jamieson Park &nbsp;·&nbsp; Thoroughbred Stud</div>
+        <h1 style="margin:0;font-weight:600;font-size:clamp(28px,4vw,42px);letter-spacing:-.01em;line-height:1;">2026 Covering Plan <span style="font-style:italic;font-weight:400;opacity:.82;">— Working List</span></h1>
+      </div>
+      <div class="jp-noprint" style="display:flex;gap:9px;flex-wrap:wrap;">
+        <sc-if value="{{ canUndo }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ onUndo }}" title="Undo the last change" style="display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:#f7e7cf;color:#7a3f10;border:2px solid #e08a2a;border-radius:3px;padding:8px 14px;font-weight:600;">↶ Undo <span style="opacity:.65;font-weight:500;">{{ histLen }}</span></button>
+        </sc-if>
+        <sc-if value="{{ noUndo }}" hint-placeholder-val="{{ true }}">
+          <button disabled="{{ true }}" title="Nothing to undo yet" style="display:inline-flex;align-items:center;gap:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:transparent;color:rgba(244,239,225,.35);border:1px solid rgba(244,239,225,.16);border-radius:3px;padding:9px 14px;cursor:not-allowed;">↶ Undo</button>
+        </sc-if>
+        <button onClick="{{ onToggleView }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:#f4efe1;color:#221f18;border:none;border-radius:3px;padding:9px 14px;font-weight:600;">{{ viewToggleLabel }}</button>
+        <button onClick="{{ onPrint }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:#f4efe1;border:1px solid rgba(244,239,225,.4);border-radius:3px;padding:9px 14px;">Print / PDF</button>
+        <button onClick="{{ onExport }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:#f4efe1;border:1px solid rgba(244,239,225,.4);border-radius:3px;padding:9px 14px;">Save file</button>
+        <button onClick="{{ onImport }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:#f4efe1;border:1px solid rgba(244,239,225,.4);border-radius:3px;padding:9px 14px;">Open file</button>
+        <button onClick="{{ onReset }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:rgba(244,239,225,.75);border:1px solid rgba(244,239,225,.25);border-radius:3px;padding:9px 14px;">Reset</button>
+      </div>
+    </div>
+  </header>
+
+  <div style="background:#f4efe1;border-bottom:1px solid #d9d0bd;padding:13px clamp(18px,4vw,46px);">
+    <div style="max-width:1500px;margin:0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px 28px;font-family:'IBM Plex Mono',monospace;">
+      <div style="display:flex;gap:22px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:#6f6753;"><b style="color:{{ accent }};font-size:15px;">{{ sum.mares }}</b> mares</span>
+        <span style="font-size:12px;color:#6f6753;"><b style="color:{{ accent }};font-size:15px;">{{ sum.stallions }}</b> stallions</span>
+        <span style="font-size:12px;color:#6f6753;"><b style="color:{{ accent }};font-size:15px;">{{ sum.inFoal }}</b> in foal</span>
+        <span style="font-size:12px;color:#6f6753;"><b style="color:#39844f;font-size:15px;">{{ sum.good }}</b> good</span>
+        <span style="font-size:12px;color:#6f6753;"><b style="color:#b23a2c;font-size:15px;">{{ sum.review }}</b> to review</span>
+      </div>
+      <div style="flex:1;"></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:10.5px;color:#8a8067;align-items:center;">
+        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:50%;background:#b23a2c;display:inline-block;"></span>Review / change</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:50%;background:#e08a2a;display:inline-block;"></span>Pending</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:11px;height:11px;border-radius:50%;background:#39844f;display:inline-block;"></span>Good</span>
+        <span style="opacity:.5;">·</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#2c4a3b;display:inline-block;"></span>Colt</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:7px;height:7px;border-radius:50%;background:#8a3a2e;display:inline-block;"></span>Filly</span>
+        <span>est = due est.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="jp-noprint" style="max-width:1500px;margin:14px auto 0;padding:0 clamp(18px,4vw,46px);font-family:'IBM Plex Mono',monospace;font-size:11px;color:#8a8067;">
+    Drag a mare's <b>name</b> onto another stallion — or down to Dry / Late. Mares auto-sort by due date. Tap the dot to set <b style="color:#b23a2c;">review</b> / <b style="color:#e08a2a;">pending</b> / <b style="color:#39844f;">good</b>. <b>＋ / −</b> on a stallion adds or removes a mare box. Everything saves on this device.
+  </div>
+
+  <sc-if value="{{ hasUnseen }}" hint-placeholder-val="{{ true }}">
+    <div class="jp-noprint" style="max-width:1500px;margin:12px auto 0;padding:0 clamp(18px,4vw,46px);">
+      <div style="display:flex;align-items:center;gap:13px;flex-wrap:wrap;background:#fbedd6;border:1px solid #eccfa0;border-left:4px solid #e08a2a;border-radius:6px;padding:11px 16px;">
+        <span style="width:10px;height:10px;border-radius:50%;background:#e08a2a;flex-shrink:0;box-shadow:0 0 0 4px rgba(224,138,42,.18);"></span>
+        <span style="font-size:14px;color:#6a4a1e;flex:1;min-width:180px;"><b>{{ unseenLabel }}</b> since you last opened this — shown with a <b>NEW</b> tag in the changes list.</span>
+        <button onClick="{{ onViewNew }}" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:#e08a2a;color:#2b2620;border:none;border-radius:4px;padding:7px 13px;font-weight:600;">View changes</button>
+        <button onClick="{{ onDismissNew }}" style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:#9a7637;border:1px solid #e0c79a;border-radius:4px;padding:7px 13px;">Mark seen</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isBoard }}" hint-placeholder-val="{{ true }}">
+  <main class="jp-board" style="max-width:1500px;margin:0 auto;padding:16px clamp(18px,4vw,46px) 0;display:flex;flex-direction:column;gap:14px;">
+    <sc-for list="{{ lanes }}" as="lane" hint-placeholder-count="6">
+      <section class="jp-lane" style="background:#faf6ec;border:1px solid {{ lane.borderColor }};border-radius:6px;box-shadow:0 1px 2px rgba(60,48,20,.06);overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:14px;padding:11px 16px;background:{{ lane.headerBg }};color:{{ lane.headerFg }};">
+          <div style="display:flex;align-items:baseline;gap:10px;min-width:0;flex:1;">
+            <h2 style="margin:0;font-weight:600;font-size:21px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ lane.name }}</h2>
+            <sc-if value="{{ lane.country }}" hint-placeholder-val="{{ true }}">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.12em;border:1px solid {{ lane.chipBorder }};color:{{ lane.headerFg }};opacity:.85;border-radius:2px;padding:2px 5px;">{{ lane.country }}</span>
+            </sc-if>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;opacity:.7;white-space:nowrap;">{{ lane.countLabel }}</span>
+            <sc-if value="{{ lane.hasDelta }}" hint-placeholder-val="{{ true }}">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;color:#fff;background:{{ lane.deltaBg }};border-radius:3px;padding:1px 5px;white-space:nowrap;">{{ lane.deltaText }}</span>
+            </sc-if>
+          </div>
+          <sc-if value="{{ lane.ctrls }}" hint-placeholder-val="{{ true }}">
+            <div class="jp-noprint" style="display:flex;align-items:center;gap:6px;">
+              <button onClick="{{ lane.onRemove }}" title="Remove the last mare box" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;cursor:pointer;background:{{ lane.nomsBg }};color:{{ lane.headerFg }};border:1px solid {{ lane.chipBorder }};border-radius:4px;">−</button>
+              <button onClick="{{ lane.onAdd }}" title="Add a blank mare box" style="width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;cursor:pointer;background:{{ lane.nomsBg }};color:{{ lane.headerFg }};border:1px solid {{ lane.chipBorder }};border-radius:4px;">+</button>
+            </div>
+          </sc-if>
+        </div>
+        <div class="jp-lane-body" onDragOver="{{ lane.onDragOver }}" onDrop="{{ lane.onDrop }}" style="padding:11px;min-height:58px;background:{{ lane.dropBg }};">
+          <sc-for list="{{ lane.mares }}" as="m" hint-placeholder-count="3">
+            <article class="jp-strip" data-dragging="{{ m.draggingAttr }}" onDragOver="{{ m.onStripOver }}" onDrop="{{ m.onStripDrop }}" style="background:{{ m.cardBg }};border:1px solid {{ m.cardBorder }};border-left:3px solid {{ m.barColor }};border-radius:5px;padding:8px 9px 9px;display:flex;flex-direction:column;gap:6px;box-shadow:0 1px 1px rgba(60,48,20,.05);">
+              <div style="display:flex;align-items:flex-start;gap:11px;">
+                <span draggable="true" onDragStart="{{ m.onDragStart }}" onDragEnd="{{ m.onDragEnd }}" title="Drag to move" class="jp-noprint jp-grip" style="cursor:grab;color:#7a6f55;font-size:18px;line-height:1;user-select:none;padding:1px 3px;border-radius:3px;margin-top:1px;">⣿</span>
+                <div style="flex:1;min-width:0;">
+                  <sc-if value="{{ m.manual }}" hint-placeholder-val="{{ true }}">
+                    <input class="jp-name" type="text" value="{{ m.name }}" onInput="{{ m.onName }}" placeholder="Mare name" style="width:100%;font-size:17px;font-weight:600;letter-spacing:-.01em;color:#221f18;background:transparent;border:none;border-bottom:1px dashed #d8cdb2;padding:0 0 2px;outline:none;"/>
+                  </sc-if>
+                  <sc-if value="{{ m.notManual }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
+                      <span draggable="true" onDragStart="{{ m.onDragStart }}" onDragEnd="{{ m.onDragEnd }}" title="Drag to move" class="jp-name-drag" style="font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.12;">{{ m.name }}</span>
+                      <sc-if value="{{ m.isAUS }}" hint-placeholder-val="{{ true }}">
+                        <span style="font-family:'IBM Plex Mono',monospace;font-size:8.5px;letter-spacing:.1em;background:#ece3ce;color:#8a7a52;border-radius:2px;padding:2px 4px;">AUS</span>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+                </div>
+                <button onClick="{{ m.onStatus }}" title="{{ m.statusTitle }}" class="jp-noprint" style="width:16px;height:16px;border-radius:50%;background:{{ m.statusDot }};border:2px solid rgba(0,0,0,.10);cursor:pointer;padding:0;flex-shrink:0;margin-top:2px;"></button>
+              </div>
+
+              <sc-if value="{{ m.hasFacts }}" hint-placeholder-val="{{ true }}">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6f6753;line-height:1.45;border-top:1px dotted #e2d9c4;padding-top:6px;">
+                  <div style="display:flex;gap:7px;"><span style="color:#a99c7d;min-width:44px;font-size:8px;letter-spacing:.08em;padding-top:1px;">IN FOAL</span><span style="color:#3a352a;">{{ m.inFoalLine }}</span></div>
+                  <div style="display:flex;gap:7px;"><span style="color:#a99c7d;min-width:44px;font-size:8px;letter-spacing:.08em;padding-top:1px;">DUE</span><span style="color:#3a352a;">{{ m.dueLine }}</span></div>
+                  <sc-if value="{{ m.hasProg }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;gap:7px;align-items:baseline;"><span style="color:#a99c7d;min-width:44px;font-size:8px;letter-spacing:.08em;">2025</span><span style="display:inline-flex;align-items:center;gap:5px;color:#3a352a;"><span style="width:6px;height:6px;border-radius:50%;background:{{ m.progDot }};display:inline-block;"></span>{{ m.progLine }}</span></div>
+                  </sc-if>
+                </div>
+              </sc-if>
+              <sc-if value="{{ m.noFacts }}" hint-placeholder-val="{{ true }}">
+                <div style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#b3a988;border-top:1px dotted #e2d9c4;padding-top:6px;">No 2025 service on record</div>
+              </sc-if>
+
+              <sc-if value="{{ m.commentEmpty }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ m.onOpenComment }}" class="jp-noprint" style="align-self:flex-start;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#9b8f72;background:#f4eee1;border:1px solid #e6ddc8;border-radius:3px;padding:4px 9px;cursor:pointer;">＋ Comment</button>
+              </sc-if>
+              <sc-if value="{{ m.commentCollapsedFilled }}" hint-placeholder-val="{{ true }}">
+                <button onClick="{{ m.onOpenComment }}" style="text-align:left;width:100%;cursor:pointer;background:#fbf6ea;border:1px solid #e2d6bb;border-radius:6px;padding:6px 9px;color:#3a352a;font-family:'Spectral',Georgia,serif;font-size:13px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">{{ m.comment }}</button>
+              </sc-if>
+              <sc-if value="{{ m.commentExpanded }}" hint-placeholder-val="{{ true }}">
+                <div>
+                  <textarea class="jp-comment" value="{{ m.comment }}" onInput="{{ m.onComment }}" autoFocus="{{ true }}" placeholder="Comment…" rows="3" style="width:100%;resize:vertical;font-size:13.5px;line-height:1.4;color:#221f18;background:#fffdf8;border:1px solid #cdbf9d;border-radius:4px;padding:7px 9px;min-height:48px;"></textarea>
+                  <button onClick="{{ m.onCloseComment }}" class="jp-noprint" style="float:right;margin-top:3px;font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#9b8f72;background:none;border:none;cursor:pointer;">Minimise ▲</button>
+                </div>
+              </sc-if>
+            </article>
+          </sc-for>
+          <sc-if value="{{ lane.empty }}" hint-placeholder-val="{{ true }}">
+            <div style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;min-height:44px;color:#b3a988;font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em;border:1px dashed #d3c9b2;border-radius:5px;">Drag mares here</div>
+          </sc-if>
+        </div>
+      </section>
+    </sc-for>
+    <div class="jp-noprint" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:2px;">
+      <button onClick="{{ onAddMare }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:{{ accent }};color:#f4efe1;border:none;border-radius:5px;padding:12px 20px;font-weight:600;">+ Add mare</button>
+      <button onClick="{{ onAddStallion }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:{{ accent }};border:1px dashed #c2b899;border-radius:5px;padding:11px 18px;">+ Add stallion</button>
+    </div>
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+  <main class="jp-ovwrap" style="max-width:1500px;margin:0 auto;padding:18px clamp(18px,4vw,46px) 0;">
+    <div class="jp-overview">
+      <sc-for list="{{ lanes }}" as="lane" hint-placeholder-count="8">
+        <div class="jp-ovblock" onDragOver="{{ lane.onDragOver }}" onDrop="{{ lane.onDrop }}" style="margin-bottom:18px;background:{{ lane.ovBg }};border:1px solid {{ lane.borderColor }};border-radius:5px;padding:9px 11px 11px;">
+          <div style="display:flex;align-items:baseline;gap:8px;border-bottom:2px solid {{ lane.headerBg }};padding-bottom:4px;margin-bottom:6px;">
+            <span style="font-weight:600;font-size:16px;letter-spacing:-.01em;color:{{ lane.headerBg }};line-height:1.1;">{{ lane.name }}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-size:9.5px;color:#a99c7d;">{{ lane.ovCount }}</span>
+            <sc-if value="{{ lane.hasDelta }}" hint-placeholder-val="{{ true }}">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:700;color:#fff;background:{{ lane.deltaBg }};border-radius:3px;padding:1px 5px;">{{ lane.deltaText }}</span>
+            </sc-if>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">
+            <sc-for list="{{ lane.mares }}" as="m" hint-placeholder-count="3">
+              <span class="jp-chip" draggable="true" onDragStart="{{ m.onDragStart }}" onDragEnd="{{ m.onDragEnd }}" onDragOver="{{ m.onStripOver }}" onDrop="{{ m.onStripDrop }}" title="Drag to move" style="display:inline-flex;align-items:center;gap:6px;background:{{ m.cardBg }};border:1px solid {{ m.cardBorder }};border-left:3px solid {{ m.barColor }};border-radius:4px;padding:3px 8px 3px 7px;font-size:13px;line-height:1.3;">
+                <button onClick="{{ m.onStatus }}" title="{{ m.statusTitle }}" class="jp-noprint" style="width:11px;height:11px;border-radius:50%;background:{{ m.statusDot }};border:1.5px solid rgba(0,0,0,.10);cursor:pointer;padding:0;flex-shrink:0;"></button>
+                <span style="font-weight:500;color:#2a2620;">{{ m.name }}</span>
+                <sc-if value="{{ m.isAUS }}" hint-placeholder-val="{{ true }}"><span style="font-family:'IBM Plex Mono',monospace;font-size:8px;color:#9a8a62;">AUS</span></sc-if>
+              </span>
+            </sc-for>
+            <sc-if value="{{ lane.empty }}" hint-placeholder-val="{{ true }}">
+              <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#bcae90;">— drag mares here —</span>
+            </sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div class="jp-noprint" style="display:flex;gap:9px;flex-wrap:wrap;margin-top:4px;">
+      <button onClick="{{ onAddMare }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:{{ accent }};color:#f4efe1;border:none;border-radius:5px;padding:12px 20px;font-weight:600;">+ Add mare</button>
+      <button onClick="{{ onAddStallion }}" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;color:{{ accent }};border:1px dashed #c2b899;border-radius:5px;padding:11px 18px;">+ Add stallion</button>
+    </div>
+  </main>
+  </sc-if>
+
+  <!-- Changes log window -->
+  <div class="jp-noprint" style="position:fixed;right:18px;bottom:18px;width:330px;max-width:calc(100vw - 36px);z-index:60;font-family:'IBM Plex Mono',monospace;">
+    <div style="background:#2b2620;border:1px solid #14110d;border-radius:9px;box-shadow:0 8px 28px rgba(0,0,0,.30);overflow:hidden;">
+      <div style="display:flex;align-items:center;gap:4px;padding:5px 8px 5px 14px;">
+        <button onClick="{{ onToggleLog }}" title="Show / hide the changes log" style="flex:1;text-align:left;display:flex;align-items:center;gap:8px;background:none;border:none;color:#f4efe1;cursor:pointer;padding:6px 0;font-family:inherit;">
+          <span style="font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;">Changes <span style="opacity:.5;font-weight:500;">{{ logCount }}</span></span>
+        </button>
+        <sc-if value="{{ canClearLog }}" hint-placeholder-val="{{ true }}">
+          <button onClick="{{ onClearLog }}" title="Clear the changes log (board stays as is)" style="font-family:inherit;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(244,239,225,.6);background:none;border:1px solid rgba(244,239,225,.22);border-radius:3px;padding:4px 8px;cursor:pointer;">Clear</button>
+        </sc-if>
+        <button onClick="{{ onToggleLog }}" title="Show / hide" style="background:none;border:none;color:#f4efe1;cursor:pointer;font-size:11px;opacity:.65;padding:6px;">{{ logChevron }}</button>
+      </div>
+      <sc-if value="{{ logOpen }}" hint-placeholder-val="{{ true }}">
+        <div style="max-height:42vh;overflow:auto;border-top:1px solid rgba(244,239,225,.12);">
+          <sc-for list="{{ logItems }}" as="it" hint-placeholder-count="3">
+            <div style="display:flex;gap:9px;align-items:flex-start;padding:8px 14px;border-bottom:1px solid rgba(244,239,225,.06);">
+              <span style="width:7px;height:7px;border-radius:50%;background:{{ it.dot }};margin-top:5px;flex-shrink:0;"></span>
+              <span style="flex:1;font-size:12.5px;line-height:1.4;color:#ece5d4;font-family:'Spectral',Georgia,serif;">{{ it.text }}</span>
+              <sc-if value="{{ it.isNew }}" hint-placeholder-val="{{ true }}">
+                <span style="font-family:'IBM Plex Mono',monospace;font-size:7.5px;font-weight:700;letter-spacing:.1em;background:#e08a2a;color:#2b2620;border-radius:2px;padding:1px 4px;margin-top:3px;flex-shrink:0;">NEW</span>
+              </sc-if>
+              <span style="font-size:9px;color:rgba(244,239,225,.4);margin-top:3px;white-space:nowrap;">{{ it.time }}</span>
+            </div>
+          </sc-for>
+          <sc-if value="{{ logEmpty }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:15px 14px;font-size:11px;color:rgba(244,239,225,.45);line-height:1.5;">No changes yet — move a mare, tap a circle, or add a mare and it shows up here.</div>
+          </sc-if>
+        </div>
+      </sc-if>
+    </div>
+  </div>
+
+  <input id="jp-file" type="file" accept="application/json" style="display:none;" onChange="{{ onFile }}"/>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:&quot;100%&quot;,&quot;height&quot;:&quot;100%&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#2c4a3b&quot;,&quot;options&quot;:[&quot;#2c4a3b&quot;,&quot;#7a3b30&quot;,&quot;#2b3a52&quot;,&quot;#3a352c&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Appearance&quot;}}">
+const DATA = `{"stallions":[{"n":"Savaglee","full":"Savaglee","mares":[{"n":"Bientheredonethat","loc":"NZ","if":"Hello Youmzain"},{"n":"Lady Amhurst","loc":"NZ"},{"n":"Lambda","loc":"NZ","if":"Satono Aladdin","sv":"21 Sep 2025","due":"31 Aug 2026","p":{"d":"25 Aug 2025","s":"Colt","sire":"I Am Invincible"}},{"n":"Motcombs","loc":"NZ"}]},{"n":"Mr Mozart","full":"Mr Mozart (AUS)","mares":[{"n":"Qdos","loc":"NZ","if":"Ardrossan","sv":"01 Sep 2025","due":"11 Aug 2026","p":{"d":"29 Jul 2025","s":"Filly","sire":"Mr Mozart"}},{"n":"Soft Kiss","loc":"NZ","if":"Ardrossan","sv":"04 Sep 2025","due":"14 Aug 2026","p":{"d":"25 Aug 2025","s":"Filly","sire":"Ardrossan"}},{"n":"Faint Perfume","loc":"NZ","if":"Mr Mozart","sv":"29 Sep 2025","due":"08 Sep 2026","p":{"d":"18 Aug 2025","s":"Colt","sire":"Chaldean","note":"died"}},{"n":"Star Karen","loc":"NZ"},{"n":"Secret Allure","loc":"NZ","if":"Wrote","sv":"02 Sep 2025","due":"12 Aug 2026","est":1},{"n":"Matakana Girl","loc":"NZ"},{"n":"Ravenna Rose","loc":"NZ","if":"Mr Mozart","sv":"17 Nov 2025","due":"27 Oct 2026","est":1},{"n":"The Tailor's Niece","loc":"NZ","if":"Mr Mozart","sv":"02 Dec 2025","due":"12 Nov 2026","est":1},{"n":"Sacrosanct","loc":"NZ","if":"Noverre","sv":"29 Sep 2025","due":"08 Sep 2026","p":{"d":"19 Sep 2025","s":"Colt","sire":"Ardrossan"}},{"n":"Waimoku Falls","loc":"NZ","if":"Ardrossan","sv":"18 Sep 2025","due":"28 Aug 2026","p":{"d":"24 Aug 2025","s":"Colt","sire":"Ardrossan"}},{"n":"Morse Code","loc":"NZ","if":"Mr Mozart","sv":"08 Sep 2025","due":"18 Aug 2026","p":{"d":"16 Aug 2025","s":"Filly","sire":"Mr Mozart"}},{"n":"Fiction","loc":"NZ","if":"Satono Aladdin"}]},{"n":"Hello Youmzain","full":"Hello Youmzain (FR)","mares":[{"n":"More Beautiful","loc":"NZ"},{"n":"Madame Zoulander","loc":"NZ","if":"Mr Mozart","sv":"29 Sep 2025","due":"08 Sep 2026","p":{"d":"20 Sep 2025","s":"Colt","sire":"Hello Youmzain"}}]},{"n":"Shamexpress","full":"Shamexpress","mares":[{"n":"Future Positive","loc":"NZ"}]},{"n":"Armory","full":"Armory (IRE)","mares":[]},{"n":"Little Brose","full":"Little Brose (AUS)","mares":[{"n":"Raphie's Choice","loc":"NZ","p":{"d":"29 Oct 2025","s":"Filly","sire":"Mr Mozart"}},{"n":"Hannah Luxe","loc":"NZ","if":"Profondo","sv":"31 Oct 2025","due":"11 Oct 2026","est":1,"p":{"d":"24 Sep 2025","s":"Filly","sire":"Harry Angel"}},{"n":"Fast Company","loc":"NZ","if":"Wrote","sv":"19 Nov 2025","due":"29 Oct 2026","est":1,"p":{"d":"10 Nov 2025","s":"Filly","sire":"Super Seth"}},{"n":"Sacred Siren","loc":"NZ","if":"Savabeel","sv":"07 Dec 2025","due":"17 Nov 2026","est":1,"p":{"d":"15 Oct 2025","s":"Colt","sire":"Super Seth"}}]},{"n":"Per Incanto","full":"Per Incanto (USA)","mares":[{"n":"Express Fantasy","loc":"NZ","if":"Ardrossan","sv":"26 Nov 2025","due":"05 Nov 2026","est":1,"p":{"d":"07 Nov 2025","s":"Colt","sire":"Mr Mozart"}}]},{"n":"Auguste Rodin","full":"Auguste Rodin (IRE)","mares":[{"n":"Fashion Delight","loc":"NZ","if":"Paddington"},{"n":"Sonoma Coast","loc":"NZ","if":"Hello Youmzain","sv":"26 Sep 2025","due":"05 Sep 2026","p":{"d":"25 Aug 2025","s":"Filly","sire":"Mr Mozart"}}]},{"n":"Paddington","full":"Paddington (IRE)","mares":[{"n":"Fiscal Fantasy","loc":"NZ","if":"Satono Aladdin","sv":"18 Oct 2025","due":"27 Sep 2026","p":{"d":"04 Sep 2025","s":"Colt","sire":"Paddington"}},{"n":"Just A Floozie","loc":"NZ","if":"Satono Aladdin","sv":"13 Oct 2025","due":"22 Sep 2026","p":{"d":"22 Aug 2025","s":"Filly","sire":"Mr Mozart"}}]},{"n":"Satono Aladdin","full":"Satono Aladdin","mares":[{"n":"Rare Delight","loc":"NZ"},{"n":"Savaria","loc":"NZ","if":"Auguste Rodin","sv":"10 Oct 2025","due":"19 Sep 2026","p":{"d":"23 Sep 2025","s":"Colt","sire":"Chaldean"}},{"n":"Gin Martini","loc":"NZ","if":"Auguste Rodin","sv":"08 Nov 2025","due":"18 Oct 2026","p":{"d":"08 Sep 2025","s":"Filly","sire":"Proisir"}},{"n":"Belarus","loc":"NZ","if":"Per Incanto"}]},{"n":"Wrote","full":"Wrote (IRE)","mares":[{"n":"Lady Pavli Chenko","loc":"NZ"},{"n":"Lipstick Lover","loc":"NZ","if":"Mr Mozart","sv":"20 Oct 2025","due":"29 Sep 2026","p":{"d":"01 Oct 2025","s":"Filly","sire":"Mr Mozart"}},{"n":"Bolsheviks","loc":"NZ","if":"Satono Aladdin","sv":"28 Oct 2025","due":"07 Oct 2026","p":{"d":"18 Sep 2025","s":"Colt","sire":"Tassort"}},{"n":"Enchanted Rose","loc":"NZ","if":"Ardrossan","sv":"25 Oct 2025","due":"04 Oct 2026","p":{"d":"30 Aug 2025","s":"Filly","sire":"Mr Mozart"}},{"n":"Summer's Day","loc":"NZ","if":"Wrote","sv":"29 Oct 2025","due":"08 Oct 2026","p":{"d":"06 Oct 2025","s":"Filly","sire":"Wrote"}}]},{"n":"Chaldean","full":"Chaldean (GB)","mares":[{"n":"Proscenium Arch","loc":"NZ","if":"Mr Mozart","sv":"28 Oct 2025","due":"08 Oct 2026","est":1,"p":{"d":"13 Sep 2025","s":"Colt","sire":"Farnan"}},{"n":"Swerving","loc":"NZ","if":"Wrote","sv":"09 Sep 2025","due":"19 Aug 2026","p":{"d":"20 Aug 2025","s":"Colt","sire":"Profondo"}}]},{"n":"Ardrossan","full":"Ardrossan (AUS)","mares":[{"n":"Angry Bet","loc":"NZ"},{"n":"La Bella Beals","loc":"NZ","if":"Mr Mozart","sv":"17 Nov 2025","due":"27 Oct 2026","p":{"d":"25 Oct 2025","s":"Colt","sire":"Hello Youmzain"}},{"n":"Stylish Invasion","loc":"NZ"},{"n":"Ice on Fire","loc":"NZ","if":"Profondo","sv":"22 Nov 2025","due":"01 Nov 2026","p":{"d":"03 Nov 2025","s":"Filly","sire":"Ace High"}},{"n":"Montana Mist","loc":"NZ","if":"Hello Youmzain","sv":"22 Nov 2025","due":"01 Nov 2026","p":{"d":"22 Sep 2025","s":"Colt","sire":"Sweynesse"}},{"n":"Wilma","loc":"NZ"},{"n":"Famous Attraction","loc":"NZ","if":"Wrote","sv":"25 Nov 2025","due":"04 Nov 2026","est":1,"p":{"d":"13 Sep 2025","s":"Filly","sire":"Mr Mozart","note":"died"}},{"n":"Time to Chat","loc":"NZ"}]},{"n":"Profondo","full":"Profondo (AUS)","mares":[{"n":"Shoulders","loc":"NZ"}]},{"n":"St Marks Basilica","full":"St Marks Basilica","mares":[{"n":"Media Maven","loc":"AUS"},{"n":"Poppy Lane","loc":"AUS"}]},{"n":"Ocean Park","full":"Ocean Park (NZ)","mares":[{"n":"Sacred Charm","loc":"NZ"}]},{"n":"I Am Invincible","full":"I Am Invincible (AUS)","mares":[{"n":"Zelify","loc":"AUS"}]},{"n":"Charyn","full":"Charyn (FR)","mares":[{"n":"Forget Me Knot","loc":"NZ","if":"Mr Mozart","sv":"10 Sep 2025","due":"20 Aug 2026","p":{"d":"16 Aug 2025","s":"Colt","sire":"Ardrossan"}},{"n":"Perfect Offering","loc":"NZ","if":"Chaldean","sv":"30 Sep 2025","due":"09 Sep 2026","p":{"d":"04 Sep 2025","s":"Filly","sire":"Profondo","note":"died"}}]},{"n":"Delacroix/Hellbent","full":"Delacroix/Hellbent","mares":[{"n":"Siyou Inamo","loc":"AUS"}]},{"n":"Almanzor","full":"Almanzor (FR)","mares":[{"n":"Ruby Rocks","loc":"NZ"}]}],"dry":[{"n":"Kedah","loc":"NZ","if":"Ardrossan","sv":"27 Nov 2025","due":"06 Nov 2026","p":{"d":"19 Nov 2025","s":"Colt","sire":"Ocean Park"}}],"late":[{"n":"Passion Cut","loc":"NZ","if":"Mr Mozart","sv":"02 Dec 2025","due":"11 Nov 2026","p":{"d":"19 Oct 2025","s":"Colt","sire":"Mr Mozart","note":"died"}},{"n":"Thee Auld Floozie","loc":"NZ","if":"Santos","sv":"04 Dec 2025","due":"13 Nov 2026","p":{"d":"26 Oct 2025","s":"Colt","sire":"Savabeel"}},{"n":"Queen Of Shades","loc":"NZ","if":"Almanzor","sv":"03 Dec 2025","due":"12 Nov 2026","p":{"d":"06 Nov 2025","s":"Filly","sire":"Mr Mozart"}},{"n":"Chikira Lass","loc":"NZ","if":"Chaldean","sv":"07 Dec 2025","due":"16 Nov 2026","p":{"d":"26 Sep 2025","s":"Colt","sire":"Mr Mozart"}}]}`;
+
+const KEY = 'jp-working-list-2026-v4';
+const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+const NEXT = { red: 'orange', orange: 'green', green: 'red' };
+const SC = {
+  red:    { dot: '#b23a2c', bar: '#b23a2c', bg: '#fdf2ef', border: '#eccdc4', label: 'Review / change' },
+  orange: { dot: '#e08a2a', bar: '#e08a2a', bg: '#fffaf2', border: '#ecdcbf', label: 'Pending' },
+  green:  { dot: '#39844f', bar: '#39844f', bg: '#f1f7f0', border: '#cfe2cb', label: 'Good' },
+};
+const MON = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+const ORIG = (() => { const b = JSON.parse(DATA); const o = {}; b.stallions.forEach((s) => { o['st-' + slug(s.n)] = s.mares.length; }); o['dry'] = b.dry.length; o['late'] = b.late.length; return o; })();
+
+class Component extends DCLogic {
+  state = { board: null, expanded: {}, view: 'board', histLen: 0, seenAt: 0 };
+
+  componentDidMount() {
+    let board = null;
+    try { const s = localStorage.getItem(KEY); if (s) board = JSON.parse(s); } catch (e) {}
+    if (!board || !board.lanes) board = this.derive();
+    else { Object.values(board.mares || {}).forEach((m) => { if (!m.status) m.status = 'orange'; if (m.manual === undefined) m.manual = false; }); }
+    if (board.lanes && !board.lanes.find((l) => l.id === 'new')) board.lanes.push({ id: 'new', type: 'new', name: 'New mares', country: '', mareIds: [] });
+    let view = 'board';
+    try { view = localStorage.getItem(KEY + '-view') || 'board'; } catch (e) {}
+    let seenAt = 0; try { seenAt = +localStorage.getItem(KEY + '-seen') || 0; } catch (e) {}
+    this.setState({ board, view, seenAt });
+    try { localStorage.setItem(KEY + '-seen', String(Date.now())); } catch (e) {}
+    this._drag = null;
+    this._hist = [];
+  }
+
+  derive() {
+    const base = JSON.parse(DATA);
+    const mares = {};
+    const lanes = [];
+    const seen = {};
+    const addMare = (m) => {
+      let id = 'm-' + slug(m.n);
+      while (seen[id]) id += 'x';
+      seen[id] = true;
+      mares[id] = { id, n: m.n, loc: m.loc, if: m.if || '', sv: m.sv || '', due: m.due || '', est: !!m.est, p: m.p || null, comment: '', status: 'orange', manual: false };
+      return id;
+    };
+    base.stallions.forEach((s) => {
+      const c = (s.full.match(/\(([A-Za-z]{2,3})\)/) || [])[1] || '';
+      lanes.push({ id: 'st-' + slug(s.n), type: 'stallion', name: s.n, country: c, mareIds: s.mares.map(addMare) });
+    });
+    lanes.push({ id: 'dry', type: 'dry', name: 'Dry', country: '', mareIds: base.dry.map(addMare) });
+    lanes.push({ id: 'late', type: 'late', name: 'Late / Year off', country: '', mareIds: base.late.map(addMare) });
+    lanes.push({ id: 'new', type: 'new', name: 'New mares', country: '', mareIds: [] });
+    return { lanes, mares };
+  }
+
+  persist(board) { try { localStorage.setItem(KEY, JSON.stringify(board)); } catch (e) {} }
+  update(fn, track) {
+    const prevStr = JSON.stringify(this.state.board);
+    const board = JSON.parse(prevStr);
+    fn(board);
+    this.persist(board);
+    if (track !== false) {
+      this._hist = this._hist || [];
+      this._hist.push(prevStr);
+      if (this._hist.length > 80) this._hist.shift();
+      this.setState({ board, histLen: this._hist.length });
+    } else {
+      this.setState({ board });
+    }
+  }
+  undo() {
+    if (!this._hist || !this._hist.length) return;
+    const prev = this._hist.pop();
+    const board = JSON.parse(prev);
+    this.persist(board);
+    this.setState({ board, histLen: this._hist.length });
+  }
+  pushLog(b, text, color) {
+    b.log = b.log || [];
+    b.log.push({ t: Date.now(), text: text, c: color || '#9b8f72' });
+    if (b.log.length > 400) b.log.shift();
+  }
+  fmtTime(t) { const d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+
+  dueTime(m) {
+    if (!m || !m.due) return Infinity;
+    const x = m.due.match(/(\d{1,2}) (\w{3}) (\d{4})/);
+    if (!x) return Infinity;
+    return new Date(+x[3], MON[x[2]] == null ? 0 : MON[x[2]], +x[1]).getTime();
+  }
+  sortByDue(ids, M) {
+    return ids
+      .map((id, i) => ({ id, i, t: this.dueTime(M[id]) }))
+      .sort((a, b) => (a.t - b.t) || (a.i - b.i))
+      .map((o) => o.id);
+  }
+
+  move(mareId, toLaneId) {
+    if (!mareId) return;
+    const from0 = this.state.board.lanes.find((l) => l.mareIds.includes(mareId));
+    if (from0 && from0.id === toLaneId) return;
+    this.update((b) => {
+      const mare = b.mares[mareId];
+      const to = b.lanes.find((l) => l.id === toLaneId);
+      b.lanes.forEach((l) => { const i = l.mareIds.indexOf(mareId); if (i >= 0) l.mareIds.splice(i, 1); });
+      if (to) { to.mareIds.push(mareId); this.pushLog(b, (mare && mare.n ? mare.n : 'Mare') + ' → ' + to.name, '#3c5a6e'); }
+    });
+  }
+
+  fmtSv(s) { return s ? s.replace(/^0/, '').replace(/ 2025$/, '') : ''; }
+  fmtDue(s) { return s ? s.replace(/^0/, '').replace(/ 20(\d\d)$/, " '$1") : ''; }
+
+  renderVals() {
+    const board = this.state.board;
+    const accent = this.props.accent || '#2c4a3b';
+    const expanded = this.state.expanded || {};
+    const view = this.state.view || 'board';
+    if (!board) return { lanes: [], accent, isBoard: true, isOverview: false, viewToggleLabel: 'Overview', canUndo: false, noUndo: true, histLen: 0, logItems: [], logCount: 0, logEmpty: true, logOpen: true, logChevron: '▾', canClearLog: false, hasUnseen: false, unseenLabel: '', onViewNew: () => {}, onDismissNew: () => {}, sum: { mares: 0, stallions: 0, inFoal: 0, good: 0, review: 0 } };
+
+    const M = board.mares;
+    const all = Object.values(M);
+    const sum = {
+      mares: all.length,
+      stallions: board.lanes.filter((l) => l.type === 'stallion').length,
+      inFoal: all.filter((m) => m.if).length,
+      good: all.filter((m) => m.status === 'green').length,
+      review: all.filter((m) => m.status === 'red').length,
+    };
+
+    const headerOf = (lane) => {
+      if (lane.type === 'dry') return { bg: '#6f6753', fg: '#f4efe1', chip: 'rgba(244,239,225,.4)', nomsBg: 'rgba(0,0,0,.15)', border: '#cfc4ab', drop: '#f1ece0', ov: '#f3efe3' };
+      if (lane.type === 'late') return { bg: '#8a3a2e', fg: '#f4efe1', chip: 'rgba(244,239,225,.4)', nomsBg: 'rgba(0,0,0,.15)', border: '#d9c3ba', drop: '#f6ece8', ov: '#f8efeb' };
+      if (lane.type === 'new') return { bg: '#3c5a6e', fg: '#f4efe1', chip: 'rgba(244,239,225,.4)', nomsBg: 'rgba(0,0,0,.18)', border: '#c8cfd5', drop: '#eef1f4', ov: '#f0f3f6' };
+      return { bg: accent, fg: '#f4efe1', chip: 'rgba(244,239,225,.4)', nomsBg: 'rgba(0,0,0,.18)', border: '#e3dac4', drop: 'transparent', ov: '#fbf8f0' };
+    };
+
+    const rank = (l) => (l.type === 'dry' ? 1 : l.type === 'late' ? 2 : l.type === 'new' ? 3 : 0);
+    const ordered = [...board.lanes].sort((a, b) => (rank(a) - rank(b)) || (rank(a) === 0 ? a.name.localeCompare(b.name) : 0));
+    const lanes = ordered.map((lane) => {
+      const h = headerOf(lane);
+      const count = lane.mareIds.length;
+      const countLabel = count === 0 ? 'no mares' : (count === 1 ? '1 mare' : count + ' mares');
+      const orig = ORIG[lane.id] != null ? ORIG[lane.id] : 0;
+      const delta = count - orig;
+      const hasDelta = delta !== 0;
+      const deltaText = (delta > 0 ? '+' : '−') + Math.abs(delta);
+      const deltaBg = delta > 0 ? '#3f9457' : '#c4472f';
+      const orderedIds = this.sortByDue(lane.mareIds, M);
+      const mares = orderedIds.map((id) => M[id]).filter(Boolean).map((m) => {
+        const sc = SC[m.status] || SC.red;
+        const colt = m.p && /colt/i.test(m.p.s);
+        const died = m.p && m.p.note === 'died';
+        const hasFacts = !m.manual && !!(m.if || m.due || m.p);
+        const inFoalLine = m.if ? (m.if + (m.sv ? '  ·  served ' + this.fmtSv(m.sv) : '')) : 'Not yet served';
+        const dueLine = m.due ? (this.fmtDue(m.due) + (m.est ? '  est' : '')) : '—';
+        const progLine = m.p ? (m.p.s + ' · ' + this.fmtSv(m.p.d) + (m.p.sire ? ' · ' + m.p.sire : '') + (died ? ' · died' : '')) : '';
+        const isExp = !!expanded[m.id];
+        const filled = !!(m.comment && m.comment.trim());
+        return {
+          id: m.id, name: m.n, manual: !!m.manual, notManual: !m.manual, isAUS: m.loc === 'AUS',
+          hasFacts, noFacts: !m.manual && !hasFacts,
+          inFoalLine, dueLine, hasProg: !!m.p, progLine, progDot: colt ? '#2c4a3b' : '#8a3a2e',
+          comment: m.comment,
+          commentExpanded: isExp, commentCollapsedFilled: !isExp && filled, commentEmpty: !isExp && !filled,
+          statusDot: sc.dot, barColor: sc.bar, cardBg: sc.bg, cardBorder: sc.border,
+          statusTitle: sc.label + ' — tap to change',
+          draggingAttr: '0',
+          onName: (e) => this.update((b) => { if (b.mares[m.id]) b.mares[m.id].n = e.target.value; }, false),
+          onStatus: () => this.update((b) => { const x = b.mares[m.id]; if (x) { x.status = NEXT[x.status] || 'orange'; const sc2 = SC[x.status] || SC.orange; this.pushLog(b, (x.n || 'Mare') + ' — ' + sc2.label, sc2.dot); } }),
+          onComment: (e) => this.update((b) => { if (b.mares[m.id]) b.mares[m.id].comment = e.target.value; }, false),
+          onOpenComment: () => this.setState((s) => ({ expanded: { ...s.expanded, [m.id]: true } })),
+          onCloseComment: () => this.setState((s) => ({ expanded: { ...s.expanded, [m.id]: false } })),
+          onDragStart: (e) => { this._drag = m.id; if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', m.id); } catch (x) {} } },
+          onDragEnd: () => { this._drag = null; },
+          onStripOver: (e) => { e.preventDefault(); e.stopPropagation(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; },
+          onStripDrop: (e) => { e.preventDefault(); e.stopPropagation(); const id = this._drag || (e.dataTransfer && e.dataTransfer.getData('text/plain')); this.move(id, lane.id); this._drag = null; },
+        };
+      });
+      return {
+        id: lane.id, name: lane.name, country: lane.country,
+        isStallion: lane.type === 'stallion', ctrls: lane.type === 'stallion' || lane.type === 'new', countLabel, ovCount: count ? String(count) : '', empty: count === 0,
+        hasDelta, deltaText, deltaBg,
+        headerBg: h.bg, headerFg: h.fg, chipBorder: h.chip, nomsBg: h.nomsBg, borderColor: h.border, dropBg: h.drop, ovBg: h.ov,
+        mares,
+        onAdd: () => this.update((b) => {
+          const id = 'mm-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+          b.mares[id] = { id, n: '', loc: 'NZ', if: '', sv: '', due: '', est: false, p: null, comment: '', status: 'orange', manual: true };
+          const l = b.lanes.find((x) => x.id === lane.id); if (l) { l.mareIds.push(id); this.pushLog(b, 'New box added · ' + lane.name, '#39844f'); }
+        }),
+        onRemove: () => {
+          const b0 = this.state.board; const l0 = b0.lanes.find((x) => x.id === lane.id);
+          if (!l0 || !l0.mareIds.length) return;
+          const id = l0.mareIds[l0.mareIds.length - 1]; const mm = b0.mares[id];
+          const hasContent = mm && (((mm.n || '').trim()) || ((mm.comment || '').trim()));
+          if (hasContent && !window.confirm('Remove ' + (((mm.n || '').trim()) ? mm.n : 'this mare box') + ' from ' + lane.name + '?')) return;
+          this.update((b) => { const l = b.lanes.find((x) => x.id === lane.id); const rid = l.mareIds.pop(); if (rid) { const nm = (b.mares[rid] && (b.mares[rid].n || '').trim()) ? b.mares[rid].n : 'Box'; this.pushLog(b, nm + ' removed · ' + lane.name, '#b23a2c'); delete b.mares[rid]; } });
+        },
+        onDragOver: (e) => { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; },
+        onDrop: (e) => { e.preventDefault(); const id = this._drag || (e.dataTransfer && e.dataTransfer.getData('text/plain')); this.move(id, lane.id); this._drag = null; },
+      };
+    });
+
+    return {
+      accent, sum, lanes,
+      isBoard: view === 'board', isOverview: view === 'overview',
+      viewToggleLabel: view === 'board' ? 'Overview' : 'Full detail',
+      canUndo: (this.state.histLen || 0) > 0, noUndo: (this.state.histLen || 0) === 0, histLen: this.state.histLen || 0,
+      onUndo: () => this.undo(),
+      logItems: (board.log || []).slice().reverse().map((e) => ({ text: e.text, time: this.fmtTime(e.t), dot: e.c || '#9b8f72', isNew: e.t > (this.state.seenAt || 0) })),
+      logCount: (board.log || []).length, logEmpty: (board.log || []).length === 0,
+      hasUnseen: (board.log || []).some((e) => e.t > (this.state.seenAt || 0)),
+      unseenLabel: (() => { const n = (board.log || []).filter((e) => e.t > (this.state.seenAt || 0)).length; return n === 1 ? '1 change' : n + ' changes'; })(),
+      onViewNew: () => this.setState({ logOpen: true }),
+      onDismissNew: () => this.setState({ seenAt: Date.now() }),
+      logOpen: this.state.logOpen !== false, logChevron: this.state.logOpen !== false ? '▾' : '▸',
+      canClearLog: (board.log || []).length > 0,
+      onToggleLog: () => this.setState((s) => ({ logOpen: s.logOpen === false })),
+      onClearLog: () => { if (window.confirm('Clear the changes log? Your board and mares stay exactly as they are — this only empties the list of changes.')) { const b = JSON.parse(JSON.stringify(this.state.board)); b.log = []; this.persist(b); this.setState({ board: b }); } },
+      onToggleView: () => this.setState((s) => { const v = s.view === 'board' ? 'overview' : 'board'; try { localStorage.setItem(KEY + '-view', v); } catch (e) {} return { view: v }; }),
+      onPrint: () => window.print(),
+      onReset: () => { if (window.confirm("Reset the whole board back to the outgoing manager's original proposal? Your comments, circles and moves will be cleared.")) { const nb = this.derive(); this.persist(nb); this._hist = []; this.setState({ board: nb, expanded: {}, histLen: 0 }); } },
+      onAddMare: () => this.update((b) => {
+        const id = 'mm-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+        b.mares[id] = { id, n: '', loc: 'NZ', if: '', sv: '', due: '', est: false, p: null, comment: '', status: 'orange', manual: true };
+        let nl = b.lanes.find((l) => l.id === 'new');
+        if (!nl) { nl = { id: 'new', type: 'new', name: 'New mares', country: '', mareIds: [] }; b.lanes.push(nl); }
+        nl.mareIds.push(id);
+        this.pushLog(b, 'New mare added · New mares', '#39844f');
+      }),
+      onAddStallion: () => { const name = window.prompt('Stallion name'); if (!name || !name.trim()) return; this.update((b) => { const insertAt = Math.max(0, b.lanes.length - 2); b.lanes.splice(insertAt, 0, { id: 'st-' + slug(name) + '-' + Date.now(), type: 'stallion', name: name.trim(), country: '', mareIds: [] }); this.pushLog(b, 'Stallion added · ' + name.trim(), '#39844f'); }); },
+      onExport: () => {
+        const blob = new Blob([JSON.stringify(this.state.board, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'jamieson-park-working-list-2026.json';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      },
+      onImport: () => { const el = document.getElementById('jp-file'); if (el) el.click(); },
+      onFile: (e) => {
+        const f = e.target.files && e.target.files[0]; if (!f) return;
+        const r = new FileReader();
+        r.onload = () => { try { const nb = JSON.parse(r.result); if (nb && nb.lanes && nb.mares) { Object.values(nb.mares).forEach((m) => { if (!m.status) m.status = 'orange'; if (m.manual === undefined) m.manual = false; }); if (!nb.lanes.find((l) => l.id === 'new')) nb.lanes.push({ id: 'new', type: 'new', name: 'New mares', country: '', mareIds: [] }); this.persist(nb); this._hist = []; this.setState({ board: nb, expanded: {}, histLen: 0 }); } else { window.alert('That file is not a Working List export.'); } } catch (x) { window.alert('Could not read that file.'); } };
+        r.readAsText(f);
+        e.target.value = '';
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>
