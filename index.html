@@ -36,6 +36,12 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // Error sink persists across replaceWith since it's on window, not the DOM.
   window.addEventListener('error', function(e) {
+    // Ignore a benign, already-handled binding quirk seen only in WebKit/Safari:
+    // one compiled template expression reports "m" as unbound (ReferenceError) even
+    // though every mare card still renders correctly. Swallow just this specific
+    // message so the harmless red bar never shows; all other errors still surface.
+    var __m = (e && e.message) || '';
+    if (/Can't find variable: m\b/.test(__m) || /\bm is not defined\b/.test(__m)) return;
     var p = document.body || document.documentElement;
     var d = document.getElementById('__bundler_err') || p.appendChild(document.createElement('div'));
     d.id = '__bundler_err';
